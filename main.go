@@ -14,8 +14,8 @@ type BoardRouteNode struct {
 
 func simulateGames(node *BoardRouteNode, depth int, maxDepth int) {
 
-	spew.Dump(node.CurrentState.Board[0][3])
-	possibleStates := node.CurrentState.Board[0][3].GetPossibleMoves(*node.CurrentState, components.Coordinates{X: 3, Y: 0}, false)
+	spew.Dump(node.CurrentState.Board[0][0])
+	possibleStates := node.CurrentState.Board[0][0].GetPossibleMoves(*node.CurrentState, components.Coordinates{X: 0, Y: 0}, false)
 	for _, b := range possibleStates {
 		b.ToString()
 	}
@@ -24,7 +24,7 @@ func simulateGames(node *BoardRouteNode, depth int, maxDepth int) {
 func main() {
 	startingBoard := initGame()
 	rootNode := &BoardRouteNode{CurrentState: &startingBoard, NextStates: make([]*components.ChessBoard, 0)}
-	maxDepth := 3 // Set your desired maximum depth here
+	maxDepth := 1 // Set your desired maximum depth here
 	simulateGames(rootNode, 0, maxDepth)
 
 	// Example output to verify the simulation
@@ -33,10 +33,10 @@ func main() {
 
 func initGame() components.ChessBoard {
 	board := [8][8]components.ChessPiece{
-		{components.Rook{Color: true}, components.Knight{Color: true}, components.Bishop{Color: true}, components.Queen{Color: true}, components.King{Color: true}, components.Bishop{Color: true}, components.Knight{Color: true}, components.Rook{Color: true}},
+		{components.Rook{Color: true}, nil, components.Bishop{Color: true}, components.Queen{Color: true}, components.King{Color: true}, components.Bishop{Color: true}, components.Knight{Color: true}, components.Rook{Color: true}},
 		// {components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, nil, nil, nil, components.Pawn{Color: true}, components.Pawn{Color: true}},
 		// {components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}},
-		{components.Pawn{Color: true}, components.Pawn{Color: true}, nil, nil, nil, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}},
+		{nil, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}},
 		// {nil, nil, nil, nil, nil, nil, nil, nil},
 		{components.Pawn{Color: false}, nil, nil, nil, nil, nil, nil, nil},
 		{nil, nil, nil, nil, nil, nil, nil, nil},
