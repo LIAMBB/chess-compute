@@ -9,10 +9,10 @@ type Rook struct {
 	Color bool // white = true, black = false
 }
 
-func (rook Rook) GetPossibleMoves(board ChessBoard, position Coordinates, inCheck bool) []ChessBoard {
+func (rook Rook) GetPossibleMoves(board ChessBoard, position Coordinates, inCheck bool) []*ChessBoard {
 	// Vertical
 	// Horizontal
-	return []ChessBoard{}
+	return []*ChessBoard{}
 }
 
 func (rook Rook) GetColor() bool {

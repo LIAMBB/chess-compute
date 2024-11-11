@@ -9,20 +9,16 @@ type Queen struct {
 	Color bool // white = true, black = false
 }
 
-func (queen Queen) GetPossibleMoves(board ChessBoard, position Coordinates, inCheck bool) []ChessBoard {
+func (queen Queen) GetPossibleMoves(board ChessBoard, position Coordinates, inCheck bool) []*ChessBoard {
 	// Vertical
 	// Horizontal
 	// +x linear
 	// -x linear
-	return []ChessBoard{}
+	return []*ChessBoard{}
 }
 
 func (queen Queen) GetColor() bool {
 	return queen.Color
-}
-
-func (queen Queen) IsEmpty() bool {
-	return false
 }
 
 func (queen Queen) ToString() string {

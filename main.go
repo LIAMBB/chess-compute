@@ -4,32 +4,42 @@ import (
 	"fmt"
 
 	"github.com/LIAMBB/chess-compute/components"
+	"github.com/davecgh/go-spew/spew"
 )
-
-var simulatedBoardStates = make(map[string]*components.ChessBoard)
-var gameSimulation BoardRouteNode
-var dumpedStates = make(map[string]bool)
 
 type BoardRouteNode struct {
 	CurrentState *components.ChessBoard
 	NextStates   []*components.ChessBoard
 }
 
+func simulateGames(node *BoardRouteNode, depth int, maxDepth int) {
+
+	spew.Dump(node.CurrentState.Board[1][1])
+	possibleStates := node.CurrentState.Board[1][1].GetPossibleMoves(*node.CurrentState, components.Coordinates{X: 1, Y: 1}, false)
+	for _, b := range possibleStates {
+		b.ToString()
+	}
+}
+
 func main() {
-	fmt.Println("Hello World")
-	gameBoard := initGame()
-	fmt.Println(gameBoard.ToString())
-	// simulateGames()
+	startingBoard := initGame()
+	rootNode := &BoardRouteNode{CurrentState: &startingBoard, NextStates: make([]*components.ChessBoard, 0)}
+	maxDepth := 2 // Set your desired maximum depth here
+	simulateGames(rootNode, 0, maxDepth)
+
+	// Example output to verify the simulation
+	fmt.Println("Simulation complete. Number of states generated:", len(rootNode.NextStates))
 }
 
 func initGame() components.ChessBoard {
 	board := [8][8]components.ChessPiece{
 		{components.Rook{Color: true}, components.Knight{Color: true}, components.Bishop{Color: true}, components.Queen{Color: true}, components.Knight{Color: true}, components.Bishop{Color: true}, components.Knight{Color: true}, components.Rook{Color: true}},
 		{components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}},
-		{components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}},
-		{components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}},
-		{components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}},
-		{components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}, components.EmptySpace{}},
+		// {nil, nil, nil, nil, nil, nil, nil, nil},
+		{nil, nil, components.Pawn{Color: false}, nil, nil, nil, nil, nil},
+		{nil, nil, nil, nil, nil, nil, nil, nil},
+		{nil, nil, nil, nil, nil, nil, nil, nil},
+		{nil, nil, nil, nil, nil, nil, nil, nil},
 		{components.Pawn{Color: false}, components.Pawn{Color: false}, components.Pawn{Color: false}, components.Pawn{Color: false}, components.Pawn{Color: false}, components.Pawn{Color: false}, components.Pawn{Color: false}, components.Pawn{Color: false}},
 		{components.Rook{Color: false}, components.Knight{Color: false}, components.Bishop{Color: false}, components.Queen{Color: false}, components.Knight{Color: false}, components.Bishop{Color: false}, components.Knight{Color: false}, components.Rook{Color: false}},
 	}
@@ -41,18 +51,3 @@ func initGame() components.ChessBoard {
 		Board:    board,
 	}
 }
-
-// func simulateGames() {
-// 	startingBoard := initGame()
-// 	rootNode := BoardRouteNode{CurrentState: &startingBoard, NextStates: make([]*components.ChessBoard, 0)}
-// 	for i := 0; i < 100; i++ {
-// 		current
-// 		for x, row := range rootNode.CurrentState.Board {
-// 			for y, tile := range row {
-// 				if !tile.IsEmpty() && tile.GetColor() ==  {
-
-// 				}
-// 			}
-// 		}
-// 	}
-// }

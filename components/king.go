@@ -9,7 +9,7 @@ type King struct {
 	Color bool // white = true, black = false
 }
 
-func (king King) GetPossibleMoves(board ChessBoard, position Coordinates, inCheck bool) []ChessBoard {
+func (king King) GetPossibleMoves(board ChessBoard, position Coordinates, inCheck bool) []*ChessBoard {
 	// N
 	// nE
 	// E
@@ -18,13 +18,9 @@ func (king King) GetPossibleMoves(board ChessBoard, position Coordinates, inChec
 	// sW
 	// W
 	//nW
-	return []ChessBoard{}
+	return []*ChessBoard{}
 }
 
 func (king King) GetColor() bool {
 	return king.Color
-}
-
-func (king King) IsEmpty() bool {
-	return false
 }
