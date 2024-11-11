@@ -25,7 +25,7 @@ func (pawn Pawn) GetPossibleMoves(board ChessBoard, position Coordinates, inChec
 		newBoard := board.DeepCopy()
 		newBoard.MovePiece(position, oneStepForward)
 		possibleBoards = append(possibleBoards, newBoard)
-
+		// TODO: Handle Promotion Scenario
 	}
 
 	// Forward 2 (only if first move)

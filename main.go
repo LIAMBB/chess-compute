@@ -14,8 +14,8 @@ type BoardRouteNode struct {
 
 func simulateGames(node *BoardRouteNode, depth int, maxDepth int) {
 
-	spew.Dump(node.CurrentState.Board[1][1])
-	possibleStates := node.CurrentState.Board[1][1].GetPossibleMoves(*node.CurrentState, components.Coordinates{X: 1, Y: 1}, false)
+	spew.Dump(node.CurrentState.Board[0][1])
+	possibleStates := node.CurrentState.Board[0][1].GetPossibleMoves(*node.CurrentState, components.Coordinates{X: 1, Y: 0}, false)
 	for _, b := range possibleStates {
 		b.ToString()
 	}

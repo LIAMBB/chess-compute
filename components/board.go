@@ -124,3 +124,8 @@ func (cb *ChessBoard) WouldLeaveKingInCheck(color bool) bool {
 
 	return false
 }
+
+func (cb *ChessBoard) IsWithinBounds(position Coordinates) bool {
+	// Check if the position is within the bounds of the board
+	return position.X >= 0 && position.X < 8 && position.Y >= 0 && position.Y < 8
+}
