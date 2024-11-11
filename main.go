@@ -14,8 +14,8 @@ type BoardRouteNode struct {
 
 func simulateGames(node *BoardRouteNode, depth int, maxDepth int) {
 
-	spew.Dump(node.CurrentState.Board[0][4])
-	possibleStates := node.CurrentState.Board[0][4].GetPossibleMoves(*node.CurrentState, components.Coordinates{X: 4, Y: 0}, false)
+	spew.Dump(node.CurrentState.Board[0][2])
+	possibleStates := node.CurrentState.Board[0][2].GetPossibleMoves(*node.CurrentState, components.Coordinates{X: 2, Y: 0}, false)
 	for _, b := range possibleStates {
 		b.ToString()
 	}
@@ -34,10 +34,11 @@ func main() {
 func initGame() components.ChessBoard {
 	board := [8][8]components.ChessPiece{
 		{components.Rook{Color: true}, components.Knight{Color: true}, components.Bishop{Color: true}, components.Queen{Color: true}, components.King{Color: true}, components.Bishop{Color: true}, components.Knight{Color: true}, components.Rook{Color: true}},
-		{components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, nil, nil, nil, components.Pawn{Color: true}, components.Pawn{Color: true}},
+		// {components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, nil, nil, nil, components.Pawn{Color: true}, components.Pawn{Color: true}},
 		// {components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}},
+		{components.Pawn{Color: true}, nil, components.Pawn{Color: true}, nil, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}, components.Pawn{Color: true}},
 		// {nil, nil, nil, nil, nil, nil, nil, nil},
-		{nil, nil, components.Pawn{Color: false}, nil, nil, nil, nil, nil},
+		{components.Pawn{Color: false}, nil, nil, nil, nil, nil, nil, nil},
 		{nil, nil, nil, nil, nil, nil, nil, nil},
 		{nil, nil, nil, nil, nil, nil, nil, nil},
 		{nil, nil, nil, nil, nil, nil, nil, nil},
