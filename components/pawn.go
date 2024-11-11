@@ -57,6 +57,8 @@ func (pawn Pawn) GetPossibleMoves(board ChessBoard, position Coordinates, inChec
 		possibleBoards = append(possibleBoards, newBoard)
 	}
 
+	// TODO: handle En-Passant scenario
+
 	// Filter boards if inCheck is true
 	if inCheck {
 		possibleBoards = filterBoardsInCheck(possibleBoards, pawn.Color)
