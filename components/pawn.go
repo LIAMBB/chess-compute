@@ -71,7 +71,7 @@ func (pawn Pawn) GetPossibleMoves(board ChessBoard, position Coordinates, inChec
 func filterBoardsInCheck(boards []*ChessBoard, color bool) []*ChessBoard {
 	var validBoards []*ChessBoard
 	for _, board := range boards {
-		if !board.WouldLeaveKingInCheck(color) {
+		if !board.WouldLeaveKingInCheck(color, nil) {
 			validBoards = append(validBoards, board)
 		}
 	}
