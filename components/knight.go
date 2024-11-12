@@ -1,7 +1,5 @@
 package components
 
-import "fmt"
-
 type Knight struct {
 	Color bool // white = true, black = false
 }
@@ -11,7 +9,7 @@ func (knight Knight) GetPossibleMoves(board ChessBoard, position Coordinates, in
 	// Vertical (y +/- 2) (x +/- 1)
 	// Horizontal (y +/- 1) (x +/- 2)
 	// Define all possible moves for a knight
-	fmt.Println("Getting possible moves for knight")
+	// fmt.Println("Getting possible moves for knight")
 	moves := []Coordinates{
 		{X: position.X + 2, Y: position.Y + 1},
 		{X: position.X + 2, Y: position.Y - 1},
@@ -25,7 +23,7 @@ func (knight Knight) GetPossibleMoves(board ChessBoard, position Coordinates, in
 
 	for _, move := range moves {
 		if board.IsWithinBounds(move) && (board.IsEmpty(move) || board.IsEnemy(move, knight.Color)) {
-			fmt.Println("Move is valid")
+			// fmt.Println("Move is valid")
 			newBoard := board.DeepCopy()
 			newBoard.MovePiece(position, move)
 			possibleBoards = append(possibleBoards, newBoard)

@@ -19,13 +19,23 @@ func (king King) GetPossibleMoves(board ChessBoard, position Coordinates, inChec
 		{X: position.X - 1, Y: position.Y - 1},
 	}
 
-	// var cachedPossibleAttacks []*ChessBoard
+	// Create a cache for opponent attacks
+	cache := &AttackCache{
+		Positions: make(map[Coordinates]bool),
+		Computed:  false,
+	}
+
 	for _, move := range moves {
 		if board.IsWithinBounds(move) && (board.IsEmpty(move) || board.IsEnemy(move, king.Color)) {
 			newBoard := board.DeepCopy()
 			newBoard.MovePiece(position, move)
-			// Ensure the move doesn't leave the king in check
-			if !newBoard.WouldLeaveKingInCheck(king.Color, nil) {
+
+			// Only check if the move is safe if we're not already checking for check
+			if !inCheck {
+				if !newBoard.WouldLeaveKingInCheck(king.Color, cache, 0) {
+					possibleBoards = append(possibleBoards, newBoard)
+				}
+			} else {
 				possibleBoards = append(possibleBoards, newBoard)
 			}
 		}

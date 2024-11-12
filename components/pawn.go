@@ -1,7 +1,5 @@
 package components
 
-import "fmt"
-
 type Pawn struct {
 	Color bool // white = true, black = false
 }
@@ -14,13 +12,13 @@ func (pawn Pawn) GetPossibleMoves(board ChessBoard, position Coordinates, inChec
 	if !pawn.Color {
 		direction = -1
 	}
-	fmt.Println("Direction: ", direction)
+	// fmt.Println("Direction: ", direction)
 
 	// Forward 1
 	oneStepForward := Coordinates{X: position.X, Y: position.Y + direction}
 
-	fmt.Println("FROM: ", Coordinates{X: position.X, Y: position.Y})
-	fmt.Println("TO: ", oneStepForward)
+	// fmt.Println("FROM: ", Coordinates{X: position.X, Y: position.Y})
+	// fmt.Println("TO: ", oneStepForward)
 	if board.IsEmpty(oneStepForward) {
 		newBoard := board.DeepCopy()
 		newBoard.MovePiece(position, oneStepForward)
@@ -32,8 +30,8 @@ func (pawn Pawn) GetPossibleMoves(board ChessBoard, position Coordinates, inChec
 	if (pawn.Color && position.Y == 1) || (!pawn.Color && position.Y == 6) {
 		twoStepsForward := Coordinates{X: position.X, Y: position.Y + 2*direction}
 
-		fmt.Println("FROM: ", Coordinates{X: position.X, Y: position.Y})
-		fmt.Println("TO: ", twoStepsForward)
+		// fmt.Println("FROM: ", Coordinates{X: position.X, Y: position.Y})
+		// fmt.Println("TO: ", twoStepsForward)
 		if board.IsEmpty(twoStepsForward) {
 			newBoard := board.DeepCopy()
 			newBoard.MovePiece(position, twoStepsForward)
@@ -71,7 +69,7 @@ func (pawn Pawn) GetPossibleMoves(board ChessBoard, position Coordinates, inChec
 func filterBoardsInCheck(boards []*ChessBoard, color bool) []*ChessBoard {
 	var validBoards []*ChessBoard
 	for _, board := range boards {
-		if !board.WouldLeaveKingInCheck(color, nil) {
+		if !board.WouldLeaveKingInCheck(color, nil, 0) {
 			validBoards = append(validBoards, board)
 		}
 	}
