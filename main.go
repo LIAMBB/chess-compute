@@ -10,8 +10,10 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/LIAMBB/chess-compute/components"
 	_ "github.com/mattn/go-sqlite3"
@@ -22,7 +24,16 @@ type BoardRouteNode struct {
 	NextStateIDs []int
 }
 
-func simulateGamesWithSQLite(ctx context.Context, rootNode *BoardRouteNode, db *sql.DB, maxDepth int) {
+func checkDatabaseSize(db *sql.DB, maxSizeBytes int64) (bool, error) {
+	var size int64
+	err := db.QueryRow("SELECT page_count * page_size FROM pragma_page_count, pragma_page_size").Scan(&size)
+	if err != nil {
+		return false, err
+	}
+	return size >= maxSizeBytes, nil
+}
+
+func simulateGamesWithSQLite(ctx context.Context, rootNode *BoardRouteNode, db *sql.DB, maxDepth int, maxSizeBytes int64) {
 	// Create excess queue table
 	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS excess_queue (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,6 +53,15 @@ func simulateGamesWithSQLite(ctx context.Context, rootNode *BoardRouteNode, db *
 	statesAtDepth := make(map[int]int)
 
 	for len(queue) > 0 && currentDepth < maxDepth {
+		// Check database size before processing new depth
+		exceeded, err := checkDatabaseSize(db, maxSizeBytes)
+		if err != nil {
+			fmt.Printf("Error checking database size: %v\n", err)
+		} else if exceeded {
+			fmt.Println("Database size limit reached, stopping simulation")
+			return
+		}
+
 		select {
 		case <-ctx.Done():
 			fmt.Println("Simulation stopping...")
@@ -203,9 +223,19 @@ func simulateGamesWithSQLite(ctx context.Context, rootNode *BoardRouteNode, db *
 
 			// Process all stored states at current depth before moving on
 			for {
+				// Check database size before processing stored states
+				exceeded, err := checkDatabaseSize(db, maxSizeBytes)
+				if err != nil {
+					fmt.Printf("Error checking database size: %v\n", err)
+					break
+				} else if exceeded {
+					fmt.Println("Database size limit reached while processing stored states, stopping simulation")
+					return
+				}
+
 				// Count remaining states at current depth
 				var remainingCount int
-				err := db.QueryRow("SELECT COUNT(*) FROM excess_queue WHERE depth = ?", currentDepth).Scan(&remainingCount)
+				err = db.QueryRow("SELECT COUNT(*) FROM excess_queue WHERE depth = ?", currentDepth).Scan(&remainingCount)
 				if err != nil {
 					fmt.Println("Error counting remaining states:", err)
 					break
@@ -217,90 +247,105 @@ func simulateGamesWithSQLite(ctx context.Context, rootNode *BoardRouteNode, db *
 
 				fmt.Printf("Processing %d remaining states at depth %d\n", remainingCount, currentDepth)
 
-				// Fetch next batch of stored states
-				rows, err := db.Query("SELECT state_id FROM excess_queue WHERE depth = ? LIMIT ?", currentDepth, queueLimit)
-				if err != nil {
-					fmt.Println("Error querying excess queue:", err)
-					break
-				}
-
-				var storedStates []*BoardRouteNode
-				var processedIDs []int
-				for rows.Next() {
-					var stateID int
-					err := rows.Scan(&stateID)
+				// Process stored states in smaller batches
+				batchSize := 1000
+				for i := 0; i < remainingCount; i += batchSize {
+					// Check size before each batch
+					exceeded, err := checkDatabaseSize(db, maxSizeBytes)
 					if err != nil {
-						fmt.Println("Error scanning excess queue row:", err)
-						continue
+						fmt.Printf("Error checking database size: %v\n", err)
+						break
+					} else if exceeded {
+						fmt.Println("Database size limit reached during batch processing, stopping simulation")
+						return
 					}
-					storedStates = append(storedStates, &BoardRouteNode{StateID: stateID, NextStateIDs: []int{}})
-					processedIDs = append(processedIDs, stateID)
-				}
-				rows.Close()
 
-				if len(storedStates) == 0 {
-					break
-				}
-
-				// Delete processed states
-				if len(processedIDs) > 0 {
-					query := "DELETE FROM excess_queue WHERE depth = ? AND state_id IN ("
-					params := []interface{}{currentDepth}
-					for i, id := range processedIDs {
-						if i > 0 {
-							query += ","
-						}
-						query += "?"
-						params = append(params, id)
-					}
-					query += ")"
-
-					_, err = db.Exec(query, params...)
+					// Fetch next batch of stored states
+					rows, err := db.Query("SELECT state_id FROM excess_queue WHERE depth = ? LIMIT ? OFFSET ?",
+						currentDepth, batchSize, i)
 					if err != nil {
-						fmt.Println("Error deleting processed excess states:", err)
-					}
-				}
-
-				// Process stored states and add results to newQueue instead of replacing queue
-				tempQueue := storedStates
-				var tempResults []*BoardRouteNode
-
-				// Process the stored states similar to main loop
-				for i := 0; i < len(tempQueue); i += batchSize {
-					end := i + batchSize
-					if end > len(tempQueue) {
-						end = len(tempQueue)
+						fmt.Println("Error querying excess queue:", err)
+						break
 					}
 
-					for j := i; j < end; j++ {
-						node := tempQueue[j]
-						currentBoard := getBoardStateByID(db, node.StateID)
-						if currentBoard == nil {
+					var storedStates []*BoardRouteNode
+					var processedIDs []int
+					for rows.Next() {
+						var stateID int
+						err := rows.Scan(&stateID)
+						if err != nil {
+							fmt.Println("Error scanning excess queue row:", err)
 							continue
 						}
+						storedStates = append(storedStates, &BoardRouteNode{StateID: stateID, NextStateIDs: []int{}})
+						processedIDs = append(processedIDs, stateID)
+					}
+					rows.Close()
 
-						for y, row := range currentBoard.Board {
-							for x, piece := range row {
-								if piece != nil && piece.GetColor() == currentBoard.NextTurn {
-									possibleMoves := piece.GetPossibleMoves(*currentBoard, components.Coordinates{X: x, Y: y}, false)
-									for _, newBoard := range possibleMoves {
-										newBoard.NextTurn = !currentBoard.NextTurn
-										newStateID := storeBoardState(db, newBoard)
-										newNode := &BoardRouteNode{
-											StateID:      newStateID,
-											NextStateIDs: []int{},
+					if len(storedStates) == 0 {
+						break
+					}
+
+					// Delete processed states
+					if len(processedIDs) > 0 {
+						query := "DELETE FROM excess_queue WHERE depth = ? AND state_id IN ("
+						params := []interface{}{currentDepth}
+						for i, id := range processedIDs {
+							if i > 0 {
+								query += ","
+							}
+							query += "?"
+							params = append(params, id)
+						}
+						query += ")"
+
+						_, err = db.Exec(query, params...)
+						if err != nil {
+							fmt.Println("Error deleting processed excess states:", err)
+						}
+					}
+
+					// Process stored states and add results to newQueue instead of replacing queue
+					tempQueue := storedStates
+					var tempResults []*BoardRouteNode
+
+					// Process the stored states similar to main loop
+					for i := 0; i < len(tempQueue); i += batchSize {
+						end := i + batchSize
+						if end > len(tempQueue) {
+							end = len(tempQueue)
+						}
+
+						for j := i; j < end; j++ {
+							node := tempQueue[j]
+							currentBoard := getBoardStateByID(db, node.StateID)
+							if currentBoard == nil {
+								continue
+							}
+
+							for y, row := range currentBoard.Board {
+								for x, piece := range row {
+									if piece != nil && piece.GetColor() == currentBoard.NextTurn {
+										possibleMoves := piece.GetPossibleMoves(*currentBoard, components.Coordinates{X: x, Y: y}, false)
+										for _, newBoard := range possibleMoves {
+											newBoard.NextTurn = !currentBoard.NextTurn
+											newStateID := storeBoardState(db, newBoard)
+											newNode := &BoardRouteNode{
+												StateID:      newStateID,
+												NextStateIDs: []int{},
+											}
+											tempResults = append(tempResults, newNode)
 										}
-										tempResults = append(tempResults, newNode)
 									}
 								}
 							}
 						}
 					}
-				}
 
-				// Add processed stored states to newQueue
-				newQueue = append(newQueue, tempResults...)
-				totalProcessed += len(tempQueue)
+					// Add processed stored states to newQueue
+					newQueue = append(newQueue, tempResults...)
+					totalProcessed += len(tempQueue)
+				}
 			}
 
 			fmt.Printf("Depth %d complete. Generated %d new states. Total processed: %d\n",
@@ -407,7 +452,45 @@ func storeBoardStatesBatch(db *sql.DB, boards []*components.ChessBoard) []int {
 	return ids
 }
 
+func getDiskSpace() (uint64, uint64, error) {
+	var stat syscall.Statfs_t
+	err := syscall.Statfs("/", &stat)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Available bytes = blocks * size
+	available := stat.Bavail * uint64(stat.Bsize)
+	total := stat.Blocks * uint64(stat.Bsize)
+
+	return available, total, nil
+}
+
 func main() {
+	// Get and display available disk space
+	available, total, err := getDiskSpace()
+	if err != nil {
+		fmt.Printf("Error getting disk space: %v\n", err)
+	} else {
+		fmt.Printf("Disk space:\n")
+		fmt.Printf("  Total: %.2f GB\n", float64(total)/1024/1024/1024)
+		fmt.Printf("  Available: %.2f GB\n", float64(available)/1024/1024/1024)
+	}
+
+	// Get max database size from user
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter maximum database size in GB (e.g., 10): ")
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+	maxSizeGB, err := strconv.ParseFloat(input, 64)
+	if err != nil {
+		fmt.Println("Invalid input, using default of 10GB")
+		maxSizeGB = 10
+	}
+
+	// Convert GB to bytes for SQLite
+	maxPages := int64(maxSizeGB * 1024 * 1024 * 1024 / 4096) // 4KB per page
+
 	db, err := sql.Open("sqlite3", "./chess.db")
 	if err != nil {
 		fmt.Println("Error opening database:", err)
@@ -415,18 +498,35 @@ func main() {
 	}
 	defer db.Close()
 
-	// Enable WAL mode and optimize SQLite settings
-	_, err = db.Exec(`
+	// Enable WAL mode and optimize SQLite settings with size limit
+	_, err = db.Exec(fmt.Sprintf(`
 		PRAGMA journal_mode=WAL;
 		PRAGMA synchronous=NORMAL;
 		PRAGMA cache_size=10000;
 		PRAGMA temp_store=MEMORY;
 		PRAGMA mmap_size=30000000000;
-	`)
+		PRAGMA max_page_count=%d;
+	`, maxPages))
 	if err != nil {
 		fmt.Println("Error setting SQLite pragmas:", err)
 		return
 	}
+
+	// Add function to periodically check database size
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			var size int64
+			err := db.QueryRow("SELECT page_count * page_size FROM pragma_page_count, pragma_page_size").Scan(&size)
+			if err != nil {
+				fmt.Printf("Error getting DB size: %v\n", err)
+				continue
+			}
+			fmt.Printf("Current database size: %.2f GB\n", float64(size)/1024/1024/1024)
+		}
+	}()
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS board_states (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -473,9 +573,11 @@ func main() {
 		}
 	}()
 
+	maxSizeBytes := int64(maxSizeGB * 1024 * 1024 * 1024)
+
 	// Run simulation in a separate goroutine
 	go func() {
-		simulateGamesWithSQLite(ctx, rootNode, db, maxDepth)
+		simulateGamesWithSQLite(ctx, rootNode, db, maxDepth, maxSizeBytes)
 		done <- true
 		computationDone <- true
 	}()
